@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 RED='\033[0;31m'
 NC='\033[0m'
@@ -10,7 +11,7 @@ TRUE_VALUE=1
 FALSE_VALUE=0
 
 # Get web service
-printf printf "\nSelect web service\n\t${WEBSERVICE_NGINX} - Nginx (default)\n\t${WEBSERVICE_APACHE} - Apache\nEnter: "
+printf "\nSelect web service\n\t${WEBSERVICE_NGINX} - Nginx (default)\n\t${WEBSERVICE_APACHE} - Apache\nEnter: "
 read webService
 until [[ ${webService} -eq ${WEBSERVICE_NGINX} || ${webService} -eq ${WEBSERVICE_APACHE} || ${webService} == '' ]];
 do
@@ -39,6 +40,44 @@ MAGENTO_FILE_CONFIG=/etc/${webserviceName}/include/magento.conf
 MAGENTO_MULTI_FILE_CONFIG=/etc/${webserviceName}/include/magento_multi.conf
 
 
+# Check password
+printf "Enter password for ${USER}: "
+IFS= read -rs password
+sudo -k
+until sudo -lS &> /dev/null << EOF
+${password}
+EOF
+do
+    printf "\n${RED}Password is incorect!\n${NC}"
+    printf "Enter password for ${USER}: "
+	IFS= read -rs password
+done
+
+
+# Get server name
+printf "\nEnter server name: "
+read serverName
+until [[ ${serverName} != '' ]]; ## Server name not empty
+do
+    printf "${RED}The server name doesn't empty\n${NC}"
+    printf 'Enter server name: '
+    read serverName
+done
+until [[ ! -f "${WEBSERVICE_SITE_AVAILABLE}/${serverName}.conf" ]]; ## Server name doesn't exists
+do
+    printf "${RED}The server name already exists\n${NC}"
+    printf 'Enter server name: '
+    read serverName
+done
+
+# Vhost path
+VHOST_FILE_NAME="${WEBSERVICE_SITE_AVAILABLE}/${serverName}.conf"
+
+fullServerName=$(echo "www.${serverName} ${serverName}")
+
+# Add vhost in file hosts
+printf "\n127.0.0.1\t${serverName}" | sudo tee -a /etc/hosts > /dev/null
+
 ##
 # Create ssl crt file
 ##
@@ -48,7 +87,7 @@ createSslCrt ()
         return;
     fi
 
-    cat << EOF > "${SSL_CRT}"
+    content=$(cat << EOF
 -----BEGIN CERTIFICATE-----
 MIIDXTCCAkWgAwIBAgIJANHQr6utM246MA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
 BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
@@ -72,6 +111,8 @@ oOBfL+U3243NCmwGu8viVG+ug13CZrbai5tXvNJsclgITpl4SIl+MkndTEihWkCG
 -----END CERTIFICATE-----
 
 EOF
+) > /dev/null
+    echo "${content}" | sudo tee -a "${SSL_CRT}"
 }
 
 
@@ -84,7 +125,7 @@ createSslKey ()
         return;
     fi
 
-    cat << EOF > "${SSL_KEY}"
+    content=$(cat << EOF
 -----BEGIN PRIVATE KEY-----
 MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDAprv7099R56fT
 LmN06baQa21W6ZwuhbIjXSjfgdTjtp7fDPdL7SUMQ896VoHmOX3OpKRPFe6fStcL
@@ -115,16 +156,17 @@ a7zYvL5GT8wIJc23Y95svA==
 -----END PRIVATE KEY-----
 
 EOF
+) > /dev/null
+    echo "${content}" | sudo tee -a "${SSL_KEY}"
 }
 
 ##
 # Create normal vhost file
-# @param $1 | Server name
 ##
 createNormalVhostFile ()
 {
     if [[ ${webService} -eq ${WEBSERVICE_NGINX} ]]; then
-        cat << EOF > "${WEBSERVICE_SITE_AVAILABLE}/${1}"
+        content=$(cat << EOF
 server {
         listen 80;
         !HTTPS_LISTEN!
@@ -163,8 +205,9 @@ server {
 }
 
 EOF
+)
     else
-        cat << EOF > "${WEBSERVICE_SITE_AVAILABLE}/${1}"
+        content=$(cat << EOF
 <VirtualHost *:!HTTPS_LISTEN!>
     DocumentRoot !ROOT_FOLDER!
     ServerName !SERVER_NAME!
@@ -184,8 +227,10 @@ EOF
 </VirtualHost>
 
 EOF
+)
     fi
 
+    echo "${content}" | sudo tee -a "${VHOST_FILE_NAME}" >> /dev/null
 }
 
 ##
@@ -195,7 +240,7 @@ EOF
 createMagentoVhostFile ()
 {
     if [[ ${webService} -eq ${WEBSERVICE_NGINX} ]]; then
-        cat << EOF > "${WEBSERVICE_SITE_AVAILABLE}/${1}"
+        content=$(cat << EOF
 server {
     listen 80;
     !HTTPS_LISTEN!
@@ -210,8 +255,9 @@ server {
 }
 
 EOF
+)
     else
-        cat << EOF > "${WEBSERVICE_SITE_AVAILABLE}/${1}"
+        content=$(cat << EOF
 <VirtualHost *:!HTTPS_LISTEN!>
     DocumentRoot !ROOT_FOLDER!
     ServerName !SERVER_NAME!
@@ -231,7 +277,10 @@ EOF
 </VirtualHost>
 
 EOF
+)
     fi
+
+    echo "${content}" | sudo tee -a "${VHOST_FILE_NAME}" >> /dev/null
 }
 
 
@@ -242,7 +291,7 @@ EOF
 createmagentoMultiVhostFile ()
 {
     if [[ ${webService} -eq ${WEBSERVICE_NGINX} ]]; then
-        cat << EOF > "${WEBSERVICE_SITE_AVAILABLE}/${1}"
+        content=$(cat << EOF
 map \$http_host \$MAGE_RUN_CODE {
 	!MAGE_MULTI_SITES!
 }
@@ -263,8 +312,9 @@ server {
 }
 
 EOF
+)
     else
-        cat << EOF > "${WEBSERVICE_SITE_AVAILABLE}/${1}"
+        content=$(cat << EOF
 <VirtualHost *:!HTTPS_LISTEN!>
     DocumentRoot !ROOT_FOLDER!
     ServerName !SERVER_NAME!
@@ -284,7 +334,10 @@ EOF
 </VirtualHost>
 
 EOF
+)
     fi
+
+    echo "${content}" | sudo tee -a "${VHOST_FILE_NAME}" >> /dev/null
 }
 
 ##
@@ -295,9 +348,9 @@ EOF
 addMagentoSubDomain ()
 {
     if [[ ${webService} -eq ${WEBSERVICE_NGINX} ]]; then
-        sed -i "s/!MAGE_MULTI_SITES!/${1}\t${2};\n\t!MAGE_MULTI_SITES!" "${WEBSERVICE_SITE_AVAILABLE}/${1}"
+        sed -i "s/!MAGE_MULTI_SITES!/${1}\t${2};\n\t!MAGE_MULTI_SITES!/g" "${VHOST_FILE_NAME}"
     else
-        cat << EOF >> "${WEBSERVICE_SITE_AVAILABLE}/${1}"
+        content=$(cat << EOF
 <VirtualHost *:!HTTPS_LISTEN!>
     ServerName          ${1}
     DocumentRoot        !ROOT_FOLDER!
@@ -306,6 +359,8 @@ addMagentoSubDomain ()
 </VirtualHost>
 
 EOF
+)
+        echo "${content}" | sudo tee -a "${VHOST_FILE_NAME}" >> /dev/null
     fi
 }
 
@@ -319,7 +374,7 @@ createMagentoFileConfig ()
         return;
     fi
 
-    cat << EOF > "${MAGENTO_FILE_CONFIG}"
+    content=$(cat << EOF
 root \$MAGE_ROOT/pub;
 
 index index.php;
@@ -498,6 +553,9 @@ location ~* (\\.php\$|\\.htaccess\$|\\.git) {
 }
 
 EOF
+)
+
+    echo "${content}" | sudo tee -a "${MAGENTO_FILE_CONFIG}" >> /dev/null
 }
 
 
@@ -510,7 +568,7 @@ createMagentoFileConfigMulti ()
         return;
     fi
 
-    cat << EOF > "${MAGENTO_MULTI_FILE_CONFIG}"
+    content=$(cat << EOF
 root \$MAGE_ROOT/pub;
 
 index index.php;
@@ -660,6 +718,9 @@ location ~ (index|get|static|report|404|503|test|console)\\.php\$ {
 }
 
 EOF
+)
+
+    echo "${content}" | sudo tee -a "${MAGENTO_MULTI_FILE_CONFIG}" >> /dev/null
 }
 
 
@@ -668,19 +729,15 @@ EOF
 ##
 initSslFile ()
 {
-    if [[ !-d "${SSL_FOLDER}" ]]; then
+    if [[ ! -d "${SSL_FOLDER}" ]]; then
         sudo mkdir -p "${SSL_FOLDER}"
     fi
 
-    if [[ !-d "${WEBSERVICE_INCLUDE_FOLDER}" ]]; then
-        sudo mkdir -p "${WEBSERVICE_INCLUDE_FOLDER}"
-    fi
-
-    if [[ !-f "${SSL_CRT}" ]]; then
+    if [[ ! -f "${SSL_CRT}" ]]; then
         createSslCrt
     fi
 
-    if [[ !-f "${SSL_KEY}" ]]; then
+    if [[ ! -f "${SSL_KEY}" ]]; then
         createSslKey
     fi
 }
@@ -690,41 +747,19 @@ initSslFile ()
 ##
 initMagentoFile ()
 {
-    if [[ !-f "${MAGENTO_FILE_CONFIG}" ]]; then
+    if [[ ! -d "${WEBSERVICE_INCLUDE_FOLDER}" ]]; then
+        sudo mkdir -p "${WEBSERVICE_INCLUDE_FOLDER}"
+    fi
+
+    if [[ ! -f "${MAGENTO_FILE_CONFIG}" ]]; then
         createMagentoFileConfig
     fi
 
-    if [[ !-f "${MAGENTO_MULTI_FILE_CONFIG}" ]]; then
+    if [[ ! -f "${MAGENTO_MULTI_FILE_CONFIG}" ]]; then
         createMagentoFileConfigMulti
     fi
 }
 
-
-# Check password
-printf "Enter password for ${USER}: "
-IFS= read -rs password
-sudo -k
-until sudo -lS &> /dev/null << EOF
-${password}
-EOF
-do
-    printf "\n${RED}Password is incorect!\n${NC}"
-    printf "Enter password for ${USER}: "
-	IFS= read -rs password
-done
-
-
-# Get server name
-printf "\nEnter server name: "
-read serverName
-until [[ ${serverName} != '' ]];
-do
-    printf "${RED}The server name doesn't empty\n${NC}"
-    printf 'Enter server name: '
-    read serverName
-done
-
-fullServerName=www.${serverName} ${serverName}
 
 # Get product path
 printf "\nEnter project path root: "
@@ -750,9 +785,7 @@ if [[ "${ishttps}" == '' ]]; then
     ishttps=${FALSE_VALUE}
 fi
 
-if [[ ishttps == ${TRUE_VALUE} ]]; then
-    initSslFile
-fi
+initSslFile > /dev/null
 
 
 # Check is magento project
@@ -769,8 +802,8 @@ if [[ "${isMagento}" == '' ]]; then
 fi
 
 
-if [[ ${isMagento} -eq 1 ]]; then
-    initMagentoFile
+if [[ ${isMagento} -eq ${TRUE_VALUE} ]]; then
+    initMagentoFile > /dev/null
     # Check is magento multi if it is magento project
     printf "\nIs magento multi store or website?\n\t${TRUE_VALUE} - TRUE\n\t${FALSE_VALUE} - FALSE (default)\nEnter: "
     read isMagentoMulti
@@ -784,9 +817,9 @@ if [[ ${isMagento} -eq 1 ]]; then
         isMagentoMulti=${FALSE_VALUE}
     fi
 
-    if [[ ${isMagentoMulti} -eq 1 ]]; then
+    if [[ ${isMagentoMulti} -eq ${TRUE_VALUE} ]]; then
         subdomainContinue=${TRUE_VALUE}
-        createmagentoMultiVhostFile ${serverName}
+        createmagentoMultiVhostFile ${serverName} > /dev/null
 
         # Get magento multi type
         printf "\nSelect magento multi type\n\t${MAGENTO_MULTI_STORE} - Store (default)\n\t${MAGENTO_MULTI_WEBSITE} - Website\nEnter: "
@@ -832,8 +865,8 @@ if [[ ${isMagento} -eq 1 ]]; then
             read subdomainContinue
         done
 
-        sed -i "/!MAGE_MULTI_SITES!/d" "${WEBSERVICE_SITE_AVAILABLE}/${serverName}"
-        sed -i "s/!MAGE_RUN_TYPE!/${magentoType}/g" "${WEBSERVICE_SITE_AVAILABLE}/${1}"
+        sudo sed -i "/!MAGE_MULTI_SITES!/d" "${VHOST_FILE_NAME}"
+        sudo sed -i "s/!MAGE_RUN_TYPE!/${magentoType}/g" "${VHOST_FILE_NAME}"
     else
         createMagentoVhostFile ${serverName}
     fi
@@ -841,40 +874,44 @@ else
     createNormalVhostFile ${serverName}
 fi
 
-sed -i "s/!ROOT_FOLDER!/${projectFolder}/g" "${WEBSERVICE_SITE_AVAILABLE}/${serverName}"
+rootFolder=$(echo ${projectFolder} | sed "s/\//\\\\\//g")
+sudo sed -i "s/!ROOT_FOLDER!/${rootFolder}/g" "${VHOST_FILE_NAME}"
 if [[ ${webService} -eq ${WEBSERVICE_NGINX} ]]; then
-    sed -i "s/!SERVER_NAME!/${fullServerName}" "${WEBSERVICE_SITE_AVAILABLE}/${serverName}"
+    sudo sed -i "s/!SERVER_NAME!/${fullServerName}/g" "${VHOST_FILE_NAME}"
     if [[ ${ishttps} -eq ${TRUE_VALUE} ]]; then
-        sed -i "s/!HTTPS_LISTEN!/listen 443;/g" "${WEBSERVICE_SITE_AVAILABLE}/${serverName}"
+        sudo sed -i "s/!HTTPS_LISTEN!/listen 443;/g" "${VHOST_FILE_NAME}"
     else
-        sed -i "/!HTTPS_LISTEN!/d" "${WEBSERVICE_SITE_AVAILABLE}/${serverName}"
+        sudo sed -i "/!HTTPS_LISTEN!/d" "${VHOST_FILE_NAME}"
     fi
 
-    if [[ ! -d "${WEBSERVICE_SITE_AVAILABLE}/php.conf" ]]; then
+    # Create back-end service
+    if [[ ! -f "${WEBSERVICE_SITE_AVAILABLE}/php.conf" ]]; then
         printf "\nEnter php version (5.6 or 7.0 or 7.1 ...): "
         read phpversion
-        cat << EOF > "${WEBSERVICE_SITE_AVAILABLE}/php.conf"
+        phpserverContent=$(cat << EOF
 upstream backend-server {
     server unix:/run/php/php${phpversion}-fpm.sock;
 }
 
 EOF
-        sudo ln -sf "${WEBSERVICE_SITE_AVAILABLE}/php.conf" /etc/nginx/sites-enabled/php.conf
+)
+        echo "${phpserverContent}" | sudo tee -a "${WEBSERVICE_SITE_AVAILABLE}/php.conf" >> /dev/null
+        sudo ln -sf "${WEBSERVICE_SITE_AVAILABLE}/php.conf" /etc/nginx/sites-enabled/
     fi
 
-    sudo ln -sf "${WEBSERVICE_SITE_AVAILABLE}/${serverName}" "/etc/nginx/sites-enabled/${serverName}"
+    sudo ln -sf "${VHOST_FILE_NAME}" /etc/nginx/sites-enabled/
     sudo service nginx restart
 else
-    sed -i "s/!SERVER_NAME!/${serverName}" "${WEBSERVICE_SITE_AVAILABLE}/${serverName}"
-    sed -i "s/!SERVER_ALIAS!/www.${serverName}" "${WEBSERVICE_SITE_AVAILABLE}/${serverName}"
+    sudo sed -i "s/!SERVER_NAME!/${serverName}/g" "${VHOST_FILE_NAME}"
+    sudo sed -i "s/!SERVER_ALIAS!/www.${serverName}/g" "${VHOST_FILE_NAME}"
     if [[ ${ishttps} -eq ${TRUE_VALUE} ]]; then
-        sed -i "s/!HTTPS_LISTEN!/443/g" "${WEBSERVICE_SITE_AVAILABLE}/${serverName}"
-        sed -i "s/!HTTPS_ON!/on" "${WEBSERVICE_SITE_AVAILABLE}/${serverName}"
+        sudo sed -i "s/!HTTPS_LISTEN!/443/g" "${VHOST_FILE_NAME}"
+        sudo sed -i "s/!HTTPS_ON!/on/g" "${VHOST_FILE_NAME}"
     else
-        sed -i "s/!HTTPS_LISTEN!/80/g" "${WEBSERVICE_SITE_AVAILABLE}/${serverName}"
-        sed -i "s/!HTTPS_ON!/off/g" "${WEBSERVICE_SITE_AVAILABLE}/${serverName}"
+        sudo sed -i "s/!HTTPS_LISTEN!/80/g" "${VHOST_FILE_NAME}"
+        sudo sed -i "/!HTTPS_ON!/d" "${VHOST_FILE_NAME}"
     fi
 
-    sudo a2ensite ${serverName}
+    sudo a2ensite "${serverName}.conf"
     sudo service apache2 restart
 fi
