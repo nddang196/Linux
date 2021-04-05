@@ -11,13 +11,21 @@ TRUE_VALUE=1
 FALSE_VALUE=0
 
 # Get web service
-printf "\nSelect web service\n\t${WEBSERVICE_NGINX} - Nginx (default)\n\t${WEBSERVICE_APACHE} - Apache\nEnter: "
-read webService
-until [[ ${webService} -eq ${WEBSERVICE_NGINX} || ${webService} -eq ${WEBSERVICE_APACHE} || ${webService} == '' ]];
-do
-    printf "${RED}Value invalid!\n${NC}"
-    printf "\nSelect web service\n\t${WEBSERVICE_NGINX} - Nginx (default)\n\t${WEBSERVICE_APACHE} - Apache\nEnter: "
-	read webService
+printf "
+Select web service
+    %s - Nginx (default)
+    %s - Apache
+Enter:" "${WEBSERVICE_NGINX}" "${WEBSERVICE_APACHE}"
+read -r webService
+until [[ ${webService} -eq ${WEBSERVICE_NGINX} || ${webService} -eq ${WEBSERVICE_APACHE} || ${webService} == '' ]]; do
+    printf "
+    %sValue invalid!
+    %s
+    Select web service:
+        %s - Nginx (default)
+        %s - Apache
+    Enter:" "${RED}" "${NC}" "${WEBSERVICE_NGINX}" "${WEBSERVICE_APACHE}"
+    read -r webService
 done
 if [[ "${webService}" == '' ]]; then
     webService=${WEBSERVICE_NGINX}
@@ -39,55 +47,59 @@ WEBSERVICE_SITE_AVAILABLE=/etc/${webserviceName}/sites-available
 MAGENTO_FILE_CONFIG=/etc/${webserviceName}/include/magento.conf
 MAGENTO_MULTI_FILE_CONFIG=/etc/${webserviceName}/include/magento_multi.conf
 
-
 # Check password
-printf "Enter password for ${USER}: "
+printf "Enter password for %s: " "${USER}"
 IFS= read -rs password
 sudo -k
-until sudo -lS &> /dev/null << EOF
+until sudo -lS &>/dev/null <<EOF; do
 ${password}
 EOF
-do
-    printf "\n${RED}Password is incorect!\n${NC}"
-    printf "Enter password for ${USER}: "
-	IFS= read -rs password
-done
 
+    printf "
+    %sPassword is incorrect!
+    %s
+    Enter password for %s: " "${RED}" "${NC}" "${USER}"
+    IFS= read -rs password
+done
 
 # Get server name
 printf "\nEnter server name: "
-read serverName
-until [[ ${serverName} != '' ]]; ## Server name not empty
-do
-    printf "${RED}The server name doesn't empty\n${NC}"
-    printf 'Enter server name: '
-    read serverName
+read -r serverName
+until [[ ${serverName} != '' ]]; do ## Server name not empty
+    printf "
+    %sThe server name doesn't empty
+    %s
+    Enter server name: " "${RED}" "${NC}"
+    read -r serverName
 done
-until [[ ! -f "${WEBSERVICE_SITE_AVAILABLE}/${serverName}.conf" ]]; ## Server name doesn't exists
-do
-    printf "${RED}The server name already exists\n${NC}"
+until [[ ! -f "${WEBSERVICE_SITE_AVAILABLE}/${serverName}.conf" ]]; do ## Server name doesn't exists
+    printf "
+    %sThe server name already exists
+    %s" "${RED}" "${NC}"
     printf 'Enter server name: '
-    read serverName
+    read -r serverName
 done
 
 # Vhost path
 VHOST_FILE_NAME="${WEBSERVICE_SITE_AVAILABLE}/${serverName}.conf"
 
-fullServerName=$(echo "www.${serverName} ${serverName}")
+fullServerName="www.${serverName} ${serverName}"
 
 # Add vhost in file hosts
-printf "\n127.0.0.1\t${serverName}" | sudo tee -a /etc/hosts > /dev/null
+printf "
+127.0.0.1   %s" "${serverName}
+" | sudo tee -a /etc/hosts >/dev/null
 
 ##
 # Create ssl crt file
 ##
-createSslCrt ()
-{
+createSslCrt() {
     if [[ -f "${SSL_CRT}" ]]; then
-        return;
+        return
     fi
 
-    content=$(cat << EOF
+    content=$(
+        cat <<EOF
 -----BEGIN CERTIFICATE-----
 MIIDXTCCAkWgAwIBAgIJANHQr6utM246MA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
 BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
@@ -111,21 +123,20 @@ oOBfL+U3243NCmwGu8viVG+ug13CZrbai5tXvNJsclgITpl4SIl+MkndTEihWkCG
 -----END CERTIFICATE-----
 
 EOF
-) > /dev/null
+    ) >/dev/null
     echo "${content}" | sudo tee -a "${SSL_CRT}"
 }
-
 
 ##
 # Create ssl key file
 ##
-createSslKey ()
-{
+createSslKey() {
     if [[ -f "${SSL_KEY}" ]]; then
-        return;
+        return
     fi
 
-    content=$(cat << EOF
+    content=$(
+        cat <<EOF
 -----BEGIN PRIVATE KEY-----
 MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDAprv7099R56fT
 LmN06baQa21W6ZwuhbIjXSjfgdTjtp7fDPdL7SUMQ896VoHmOX3OpKRPFe6fStcL
@@ -156,17 +167,17 @@ a7zYvL5GT8wIJc23Y95svA==
 -----END PRIVATE KEY-----
 
 EOF
-) > /dev/null
+    ) >/dev/null
     echo "${content}" | sudo tee -a "${SSL_KEY}"
 }
 
 ##
 # Create normal vhost file
 ##
-createNormalVhostFile ()
-{
+createNormalVhostFile() {
     if [[ ${webService} -eq ${WEBSERVICE_NGINX} ]]; then
-        content=$(cat << EOF
+        content=$(
+            cat <<EOF
 server {
         listen 80;
         !HTTPS_LISTEN!
@@ -205,9 +216,10 @@ server {
 }
 
 EOF
-)
+        )
     else
-        content=$(cat << EOF
+        content=$(
+            cat <<EOF
 <VirtualHost *:!HTTPS_LISTEN!>
     DocumentRoot !ROOT_FOLDER!
     ServerName !SERVER_NAME!
@@ -227,20 +239,20 @@ EOF
 </VirtualHost>
 
 EOF
-)
+        )
     fi
 
-    echo "${content}" | sudo tee -a "${VHOST_FILE_NAME}" >> /dev/null
+    echo "${content}" | sudo tee -a "${VHOST_FILE_NAME}" >>/dev/null
 }
 
 ##
 # Create magento vhost file
 # @param $1 | Server name
 ##
-createMagentoVhostFile ()
-{
+createMagentoVhostFile() {
     if [[ ${webService} -eq ${WEBSERVICE_NGINX} ]]; then
-        content=$(cat << EOF
+        content=$(
+            cat <<EOF
 server {
     listen 80;
     !HTTPS_LISTEN!
@@ -255,9 +267,10 @@ server {
 }
 
 EOF
-)
+        )
     else
-        content=$(cat << EOF
+        content=$(
+            cat <<EOF
 <VirtualHost *:!HTTPS_LISTEN!>
     DocumentRoot !ROOT_FOLDER!
     ServerName !SERVER_NAME!
@@ -277,21 +290,20 @@ EOF
 </VirtualHost>
 
 EOF
-)
+        )
     fi
 
-    echo "${content}" | sudo tee -a "${VHOST_FILE_NAME}" >> /dev/null
+    echo "${content}" | sudo tee -a "${VHOST_FILE_NAME}" >>/dev/null
 }
-
 
 ##
 # Create magento multi store or website vhost file
 # @param $1 | Main server name
 ##
-createmagentoMultiVhostFile ()
-{
+createMagentoMultiVhostFile() {
     if [[ ${webService} -eq ${WEBSERVICE_NGINX} ]]; then
-        content=$(cat << EOF
+        content=$(
+            cat <<EOF
 map \$http_host \$MAGE_RUN_CODE {
 	!MAGE_MULTI_SITES!
 }
@@ -312,9 +324,10 @@ server {
 }
 
 EOF
-)
+        )
     else
-        content=$(cat << EOF
+        content=$(
+            cat <<EOF
 <VirtualHost *:!HTTPS_LISTEN!>
     DocumentRoot !ROOT_FOLDER!
     ServerName !SERVER_NAME!
@@ -334,10 +347,10 @@ EOF
 </VirtualHost>
 
 EOF
-)
+        )
     fi
 
-    echo "${content}" | sudo tee -a "${VHOST_FILE_NAME}" >> /dev/null
+    echo "${content}" | sudo tee -a "${VHOST_FILE_NAME}" >>/dev/null
 }
 
 ##
@@ -345,12 +358,12 @@ EOF
 # @param $1 | sub server name
 # @param $2 | store code / website code
 ##
-addMagentoSubDomain ()
-{
+addMagentoSubDomain() {
     if [[ ${webService} -eq ${WEBSERVICE_NGINX} ]]; then
         sed -i "s/!MAGE_MULTI_SITES!/${1}\t${2};\n\t!MAGE_MULTI_SITES!/g" "${VHOST_FILE_NAME}"
     else
-        content=$(cat << EOF
+        content=$(
+            cat <<EOF
 <VirtualHost *:!HTTPS_LISTEN!>
     ServerName          ${1}
     DocumentRoot        !ROOT_FOLDER!
@@ -359,22 +372,21 @@ addMagentoSubDomain ()
 </VirtualHost>
 
 EOF
-)
-        echo "${content}" | sudo tee -a "${VHOST_FILE_NAME}" >> /dev/null
+        )
+        echo "${content}" | sudo tee -a "${VHOST_FILE_NAME}" >>/dev/null
     fi
 }
-
 
 ##
 # Create file import config for magento
 ##
-createMagentoFileConfig ()
-{
+createMagentoFileConfig() {
     if [[ -f "${MAGENTO_FILE_CONFIG}" ]]; then
-        return;
+        return
     fi
 
-    content=$(cat << EOF
+    content=$(
+        cat <<EOF
 root \$MAGE_ROOT/pub;
 
 index index.php;
@@ -553,22 +565,21 @@ location ~* (\\.php\$|\\.htaccess\$|\\.git) {
 }
 
 EOF
-)
+    )
 
-    echo "${content}" | sudo tee -a "${MAGENTO_FILE_CONFIG}" >> /dev/null
+    echo "${content}" | sudo tee -a "${MAGENTO_FILE_CONFIG}" >>/dev/null
 }
-
 
 ##
 # Create file import config for magento multi store or multi website
 ##
-createMagentoFileConfigMulti ()
-{
+createMagentoFileConfigMulti() {
     if [[ -f "${MAGENTO_MULTI_FILE_CONFIG}" ]]; then
-        return;
+        return
     fi
 
-    content=$(cat << EOF
+    content=$(
+        cat <<EOF
 root \$MAGE_ROOT/pub;
 
 index index.php;
@@ -718,17 +729,15 @@ location ~ (index|get|static|report|404|503|test|console)\\.php\$ {
 }
 
 EOF
-)
+    )
 
-    echo "${content}" | sudo tee -a "${MAGENTO_MULTI_FILE_CONFIG}" >> /dev/null
+    echo "${content}" | sudo tee -a "${MAGENTO_MULTI_FILE_CONFIG}" >>/dev/null
 }
-
 
 ##
 # Init ssl required file
 ##
-initSslFile ()
-{
+initSslFile() {
     if [[ ! -d "${SSL_FOLDER}" ]]; then
         sudo mkdir -p "${SSL_FOLDER}"
     fi
@@ -745,8 +754,7 @@ initSslFile ()
 ##
 # Init magento equired file
 ##
-initMagentoFile ()
-{
+initMagentoFile() {
     if [[ ! -d "${WEBSERVICE_INCLUDE_FOLDER}" ]]; then
         sudo mkdir -p "${WEBSERVICE_INCLUDE_FOLDER}"
     fi
@@ -760,58 +768,79 @@ initMagentoFile ()
     fi
 }
 
-
 # Get product path
 printf "\nEnter project path root: "
-read projectFolder
-until [[ -d "${projectFolder}" ]];
-do
-    printf "${RED}${projectFolder} is a directory\n${NC}"
-    printf 'Enter project path root: '
-	read projectFolder
+read -r projectFolder
+until [[ -d "${projectFolder}" ]]; do
+    printf "
+    %s%s is a directory
+    %s
+    Enter project path root: " "${RED}" "${projectFolder}" "${NC}"
+    read -r projectFolder
 done
 
-
 # Check is using https
-printf "\nIs using https?\n\t${TRUE_VALUE} - TRUE\n\t${FALSE_VALUE} - FALSE (default)\nEnter: "
-read ishttps
-until [[ ${ishttps} -eq ${TRUE_VALUE} || ${ishttps} -eq ${FALSE_VALUE} || ${ishttps} == '' ]];
-do
-    printf "${RED}Value invalid!\n${NC}"
-    printf "\nIs using https?\n\t${TRUE_VALUE} - TRUE\n\t${FALSE_VALUE} - FALSE (default)\nEnter: "
-    read ishttps
+printf "
+Is using https?
+    %s - TRUE
+    %s - FALSE (default)
+Enter: " :"${TRUE_VALUE}" "${FALSE_VALUE}"
+read -r ishttps
+until [[ ${ishttps} -eq ${TRUE_VALUE} || ${ishttps} -eq ${FALSE_VALUE} || ${ishttps} == '' ]]; do
+    printf "
+    %sValue invalid!
+    %s
+    Is using https?
+        %s - TRUE
+        %s - FALSE (default)
+    Enter: " "${RED}" "${NC}" "${TRUE_VALUE}" "${FALSE_VALUE}"
+    read -r ishttps
 done
 if [[ "${ishttps}" == '' ]]; then
     ishttps=${FALSE_VALUE}
 fi
 
-initSslFile > /dev/null
-
+initSslFile >/dev/null
 
 # Check is magento project
-printf "\nIs magento project?\n\t${TRUE_VALUE} - TRUE\n\t${FALSE_VALUE} - FALSE (default)\nEnter: "
-read isMagento
-until [[ ${isMagento} -eq ${TRUE_VALUE} || ${isMagento} -eq ${FALSE_VALUE} || ${isMagento} == '' ]];
-do
-    printf "${RED}Value invalid!\n${NC}"
-    printf "\nIs magento project?\n\t${TRUE_VALUE} - TRUE\n\t${FALSE_VALUE} - FALSE (default)\nEnter: "
-    read isMagento
+printf "
+Is magento project?
+    %s - TRUE
+    %s - FALSE (default)
+Enter: " "${TRUE_VALUE}" "${FALSE_VALUE}"
+read -r isMagento
+until [[ ${isMagento} -eq ${TRUE_VALUE} || ${isMagento} -eq ${FALSE_VALUE} || ${isMagento} == '' ]]; do
+    printf "
+    %sValue invalid!
+    %s
+    Is magento project?
+        %s - TRUE
+        %s - FALSE (default)
+    Enter: " "${RED}" "${NC}" "${TRUE_VALUE}" "${FALSE_VALUE}"
+    read -r isMagento
 done
 if [[ "${isMagento}" == '' ]]; then
     isMagento=${FALSE_VALUE}
 fi
 
-
 if [[ ${isMagento} -eq ${TRUE_VALUE} ]]; then
-    initMagentoFile > /dev/null
+    initMagentoFile >/dev/null
     # Check is magento multi if it is magento project
-    printf "\nIs magento multi store or website?\n\t${TRUE_VALUE} - TRUE\n\t${FALSE_VALUE} - FALSE (default)\nEnter: "
-    read isMagentoMulti
-    until [[ ${isMagentoMulti} -eq ${TRUE_VALUE} || ${isMagentoMulti} -eq ${FALSE_VALUE} || ${isMagentoMulti} == '' ]];
-    do
-        printf "${RED}Value invalid!\n${NC}"
-        printf "\nIs magento multi store or website?\n\t${TRUE_VALUE} - TRUE\n\t${FALSE_VALUE} - FALSE (default)\nEnter: "
-        read isMagentoMulti
+    printf "
+    Is magento multi store or website?
+        %s - TRUE
+        %s - FALSE (default)
+    Enter: " "${TRUE_VALUE}" "${FALSE_VALUE}"
+    read -r isMagentoMulti
+    until [[ ${isMagentoMulti} -eq ${TRUE_VALUE} || ${isMagentoMulti} -eq ${FALSE_VALUE} || ${isMagentoMulti} == '' ]]; do
+        printf "
+        %sValue invalid!
+        %s
+        Is magento multi store or website?
+            %s - TRUE
+            %s - FALSE (default)
+        Enter: " "${RED}" "${NC}" "${TRUE_VALUE}" "${FALSE_VALUE}"
+        read -r isMagentoMulti
     done
     if [[ "${isMagentoMulti}" == '' ]]; then
         isMagentoMulti=${FALSE_VALUE}
@@ -819,62 +848,75 @@ if [[ ${isMagento} -eq ${TRUE_VALUE} ]]; then
 
     if [[ ${isMagentoMulti} -eq ${TRUE_VALUE} ]]; then
         subdomainContinue=${TRUE_VALUE}
-        createmagentoMultiVhostFile ${serverName} > /dev/null
+        createMagentoMultiVhostFile "${serverName}" >/dev/null
 
         # Get magento multi type
-        printf "\nSelect magento multi type\n\t${MAGENTO_MULTI_STORE} - Store (default)\n\t${MAGENTO_MULTI_WEBSITE} - Website\nEnter: "
-        read magentoType
-        until [[ ${magentoType} -eq ${MAGENTO_MULTI_STORE} || ${magentoType} -eq ${MAGENTO_MULTI_WEBSITE} || ${magentoType} == '' ]];
-        do
-            printf "${RED}Value invalid!\n${NC}"
-            printf "\nSelect magento multi type\n\t${MAGENTO_MULTI_STORE} - Store (default)\n\t${MAGENTO_MULTI_WEBSITE} - Website\nEnter: "
-            read magentoType
+        printf "
+        Select magento multi type
+            %s - Store (default)
+            %s - Website
+        Enter: " "${MAGENTO_MULTI_STORE}" "${MAGENTO_MULTI_WEBSITE}"
+        read -r magentoType
+        until [[ ${magentoType} -eq ${MAGENTO_MULTI_STORE} || ${magentoType} -eq ${MAGENTO_MULTI_WEBSITE} || ${magentoType} == '' ]]; do
+            printf "
+            %sValue invalid!
+            %s
+            Select magento multi type
+                %s - Store (default)
+                %s - Website
+            Enter: " "${RED}" "${NC}" "${MAGENTO_MULTI_STORE}" "${MAGENTO_MULTI_WEBSITE}"
+            read -r magentoType
         done
         if [[ "${magentoType}" == '' ]]; then
             magentoType=${MAGENTO_MULTI_STORE}
         fi
 
-        while [[ ${subdomainContinue} -eq ${TRUE_VALUE} ]];
-        do
+        while [[ ${subdomainContinue} -eq ${TRUE_VALUE} ]]; do
             # Get sub server name
             printf "\nEnter server name for store (website): "
-            read subserverName
-            until [[ ${subserverName} != '' ]];
-            do
-                printf "${RED}Sub server name is not empty!\n${NC}"
-                printf "\nEnter server name for store / website: "
-                read subserverName
+            read -r subserverName
+            until [[ ${subserverName} != '' ]]; do
+                printf "
+                %sSub server name is not empty!
+                %s
+                Enter server name for store / website: " "${RED}" "${NC}"
+                read -r subserverName
             done
 
             fullServerName="${fullServerName} www.${subserverName} ${subserverName}"
 
             # Get store / website code
             printf "\nEnter store (website) code: "
-            read subCode
-            until [[ ${subCode} != '' ]];
-            do
-                printf "${RED}Code is not empty!\n${NC}"
-                printf "\nEnter store (website) code: "
-                read subCode
+            read -r subCode
+            until [[ ${subCode} != '' ]]; do
+                printf "
+                %sCode is not empty!
+                %s
+                Enter store (website) code: " "${RED}" "${NC}"
+                read -r subCode
             done
 
-            addMagentoSubDomain ${subserverName} ${subCode}
+            addMagentoSubDomain "${subserverName}" "${subCode}"
 
             # Is continue
-            printf "\nContinue to add sub domain?\n\t${TRUE_VALUE} - TRUE\n\t${FALSE_VALUE} - FALSE (default)\nEnter: "
-            read subdomainContinue
+            printf "
+            Continue to add sub domain?
+                %s - TRUE
+                %s - FALSE (default)
+            Enter: " "${TRUE_VALUE}" "${FALSE_VALUE}"
+            read -r subdomainContinue
         done
 
         sudo sed -i "/!MAGE_MULTI_SITES!/d" "${VHOST_FILE_NAME}"
         sudo sed -i "s/!MAGE_RUN_TYPE!/${magentoType}/g" "${VHOST_FILE_NAME}"
     else
-        createMagentoVhostFile ${serverName}
+        createMagentoVhostFile "${serverName}"
     fi
 else
-    createNormalVhostFile ${serverName}
+    createNormalVhostFile "${serverName}"
 fi
 
-rootFolder=$(echo ${projectFolder} | sed "s/\//\\\\\//g")
+rootFolder=$(echo "${projectFolder}" | sed "s/\//\\\\\//g")
 sudo sed -i "s/!ROOT_FOLDER!/${rootFolder}/g" "${VHOST_FILE_NAME}"
 if [[ ${webService} -eq ${WEBSERVICE_NGINX} ]]; then
     sudo sed -i "s/!SERVER_NAME!/${fullServerName}/g" "${VHOST_FILE_NAME}"
@@ -887,15 +929,16 @@ if [[ ${webService} -eq ${WEBSERVICE_NGINX} ]]; then
     # Create back-end service
     if [[ ! -f "${WEBSERVICE_SITE_AVAILABLE}/php.conf" ]]; then
         printf "\nEnter php version (5.6 or 7.0 or 7.1 ...): "
-        read phpversion
-        phpserverContent=$(cat << EOF
+        read -r phpversion
+        phpserverContent=$(
+            cat <<EOF
 upstream backend-server {
     server unix:/run/php/php${phpversion}-fpm.sock;
 }
 
 EOF
-)
-        echo "${phpserverContent}" | sudo tee -a "${WEBSERVICE_SITE_AVAILABLE}/php.conf" >> /dev/null
+        )
+        echo "${phpserverContent}" | sudo tee -a "${WEBSERVICE_SITE_AVAILABLE}/php.conf" >>/dev/null
         sudo ln -sf "${WEBSERVICE_SITE_AVAILABLE}/php.conf" /etc/nginx/sites-enabled/
     fi
 
