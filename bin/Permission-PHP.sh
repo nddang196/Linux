@@ -7,7 +7,7 @@ set -e
 ##
 spin() {
     i=1
-    while [[ 1 ]]; do
+    while true; do
         sleep 1
         printf "\r$1: %d" ${i}
         i=$((i + 1))
@@ -21,12 +21,11 @@ NC='\033[0m'
 until sudo -lS &>/dev/null <<EOF; do
 $password
 EOF
-
     printf "Enter password for %s: " "${USER}"
     IFS= read -rs password
 done
 
-printf "\nEnter project path root (Enter if current folder): "
+printf "\nEnter project path root (Default: Current folder): "
 read -r projectFolder
 if [[ "${projectFolder}" == "" ]]; then
     projectFolder=$(pwd)
@@ -48,7 +47,7 @@ pid=$!
 sudo chown -R "$(whoami)":"$HTTPDUSER" "${projectFolder}"
 if [[ -d "${projectFolder}/var" ]]; then
     sudo setfacl -R -m u:"$HTTPDUSER":rwX -m u:"$(whoami)":rwX "${projectFolder}/var"
-    sudo setfacl -dR -m u:"$HTTPDUSER":rwX -m u:$(whoami):rwX "${projectFolder}/var"
+    sudo setfacl -dR -m u:"$HTTPDUSER":rwX -m u:"$(whoami)":rwX "${projectFolder}/var"
 fi
 if [[ -d "${projectFolder}/pub/static" ]]; then
     sudo setfacl -R -m u:"$HTTPDUSER":rwX -m u:"$(whoami)":rwX "${projectFolder}/pub/static"
@@ -77,7 +76,9 @@ fi
 if [[ -e "${projectFolder}/bin/magento" ]]; then
     sudo chmod u+x "${projectFolder}/bin/magento"
 fi
+
 find "${projectFolder}" -type f -exec chmod 664 {} \;
 find "${projectFolder}" -type d -exec chmod 775 {} \;
+
 kill ${pid}
 printf "\nDone!"

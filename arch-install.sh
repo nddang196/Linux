@@ -39,7 +39,7 @@ if [[ ${SETUP_SYSTEM} -eq 1 ]];then
         printf "
         127.0.0.1   localhost
         ::1         localhost
-        127.0.0.1   %s
+        127.0.1.1   %s
         " "${HOST_NAME}" >> /etc/hosts
 
 
@@ -63,6 +63,7 @@ if [[ ${SETUP_SYSTEM} -eq 1 ]];then
 
 
         # Boot setup
+        mkinitcpio -P
         bootctl --path=/boot install
         mv -f "${LIVE_PATH}/includes/boot-loader.conf" /boot/loader/loader.conf
         mv -f "${LIVE_PATH}/includes/arch.conf" /boot/loader/entries/arch.conf
@@ -165,7 +166,7 @@ if [[ ${INSTALL_OH_MY_ZSH} -eq 1 ]]; then
           "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting"
     } >> ~/arch-install.log 2>&1
 
-    cp -f "${LIVE_PATH}/includes/.zshrc" ~/
+    cp -f "${LIVE_PATH}/includes/.zshrc" "/home/${USERNAME}"
     kill ${pid}
     printf "Oh my zsh is installed!\n\n"
 fi
@@ -179,8 +180,8 @@ if [[ ${INSTALL_PHP_STORM} -eq 1 ]]; then
     echo "PID = ${pid}"
 
     {
-        arr=($(curl https://data.services.jetbrains.com/products/releases\?code\=PS\&latest\=true | \
-        grep -oP "https:\/\/download\.jetbrains\.com\/webide\/PhpStorm-\d*\.\d*(\.\d*)*\.tar\.gz"))
+        mapfile -t arr < <(curl "https://data.services.jetbrains.com/products/releases\?code\=PS\&latest\=true" | \
+        grep -oP "https:\/\/download\.jetbrains\.com\/webide\/PhpStorm-\d*\.\d*(\.\d*)*\.tar\.gz")
 
         url=${arr[0]}
         if [[ ${url} != '' ]]; then
@@ -204,8 +205,8 @@ if [[ ${INSTALL_DATA_GRIP} -eq 1 ]]; then
     echo "PID = ${pid}"
 
     {
-        arr=($(curl "https://data.services.jetbrains.com/products/releases\?code\=DG\&latest\=true" | \
-        grep -oP "https:\/\/download\.jetbrains\.com\/datagrip\/datagrip-\d*\.\d*(\.\d*)*\.tar\.gz"))
+        mapfile -t arr < <(curl "https://data.services.jetbrains.com/products/releases\?code\=DG\&latest\=true" | \
+        grep -oP "https:\/\/download\.jetbrains\.com\/datagrip\/datagrip-\d*\.\d*(\.\d*)*\.tar\.gz")
 
         url=${arr[0]}
         if [[ ${url} != '' ]]; then
@@ -229,8 +230,8 @@ if [[ ${INSTALL_INTELIJ_IDEA} -eq 1 ]]; then
     echo "PID = ${pid}"
 
     {
-        arr=($(curl "https://data.services.jetbrains.com/products/releases\?code\=IIU%2CIIC\&latest\=true\&type\=release" | \
-        grep -oP "https:\/\/download\.jetbrains\.com\/idea\/ideaIU-\d*\.\d*(\.\d*)*\.tar\.gz"))
+        mapfile -t arr < <(curl curl "https://data.services.jetbrains.com/products/releases\?code\=IIU%2CIIC\&latest\=true\&type\=release" | \
+        grep -oP "https:\/\/download\.jetbrains\.com\/idea\/ideaIU-\d*\.\d*(\.\d*)*\.tar\.gz")
 
         url=${arr[0]}
         if [[ ${url} != '' ]]; then
