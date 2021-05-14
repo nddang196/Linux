@@ -93,82 +93,13 @@ printf "
 ##
 # Create ssl crt file
 ##
-createSslCrt() {
-    if [[ -f "${SSL_CRT}" ]]; then
-        return
-    fi
-
-    content=$(
-        cat <<EOF
------BEGIN CERTIFICATE-----
-MIIDXTCCAkWgAwIBAgIJANHQr6utM246MA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
-BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
-aWRnaXRzIFB0eSBMdGQwHhcNMTkwMTA0MTQzNjI0WhcNMjAwMTA0MTQzNjI0WjBF
-MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
-ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
-CgKCAQEAwKa7+9PfUeen0y5jdOm2kGttVumcLoWyI10o34HU47ae3wz3S+0lDEPP
-elaB5jl9zqSkTxXun0rXC9Obw7zZYJjQXZFmRfaMp461LDH44iIOyFA0VneedGFo
-pTCYhdSWvApP/pmwKpIfs9dKsxEFyyftQcoYBe4CQ2JD8uxDAXCb52QHsoYv5HKU
-32T6jDdiXqOjRinWdQQQCDge0y9PMrnh9zckvkNIPR3d+m2EmjoDTVhBZGLkZkD3
-6b/zmxIego0dC6nivAAilbtXiAqgKb2Q5ECpyh5I1O+tc638gZQR7EMaCGdMbVMh
-IczsdXneTPSmQkaJlEvm/5+TqRMR8wIDAQABo1AwTjAdBgNVHQ4EFgQUv4GrErfO
-ttk7o3e+DBYy5KYeoA4wHwYDVR0jBBgwFoAUv4GrErfOttk7o3e+DBYy5KYeoA4w
-DAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAY0PrqnyH+fi/ioYU073S
-fbHaNQp6lyOkLd7YQEWnek8Z49xgiE9+KHnBqIv7klSbo93neOoOD4k/ha7vD5LO
-10OeOJI+uRLD5UaatEHyZKPK79edZvUABAKmrVYeWqU5EaKodw/U7oFYbVuGzf1i
-5VzXNmXNE3Z3+CwOcQe6HarDUgdnMB/h1uC/t7GkJReHzrdxYUphoHs8uUSDokyp
-Ljkjhisx61EXCcZgLWatZ7KDd9CEoqeqz/CufZm3pJn+K5dMh5J2y1gzkZEyxvc7
-oOBfL+U3243NCmwGu8viVG+ug13CZrbai5tXvNJsclgITpl4SIl+MkndTEihWkCG
-8w==
------END CERTIFICATE-----
-
-EOF
-    ) >/dev/null
-    echo "${content}" | sudo tee -a "${SSL_CRT}"
-}
-
-##
-# Create ssl key file
-##
-createSslKey() {
-    if [[ -f "${SSL_KEY}" ]]; then
-        return
-    fi
-
-    content=$(
-        cat <<EOF
------BEGIN PRIVATE KEY-----
-MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDAprv7099R56fT
-LmN06baQa21W6ZwuhbIjXSjfgdTjtp7fDPdL7SUMQ896VoHmOX3OpKRPFe6fStcL
-05vDvNlgmNBdkWZF9oynjrUsMfjiIg7IUDRWd550YWilMJiF1Ja8Ck/+mbAqkh+z
-10qzEQXLJ+1ByhgF7gJDYkPy7EMBcJvnZAeyhi/kcpTfZPqMN2Jeo6NGKdZ1BBAI
-OB7TL08yueH3NyS+Q0g9Hd36bYSaOgNNWEFkYuRmQPfpv/ObEh6CjR0LqeK8ACKV
-u1eICqApvZDkQKnKHkjU761zrfyBlBHsQxoIZ0xtUyEhzOx1ed5M9KZCRomUS+b/
-n5OpExHzAgMBAAECggEAbor90MlJGjFHvkie7wXwKLxLuBRB9vvmNJ6PBnj0FFnE
-nY5OFDYWDQyX78XVsaoJg1o7odme265Q6MtaVJ13ShNFdHsq6ThIixi64oomGnOa
-cdx7u6XVuUfviOHyktBiUbHFJv0+9Z51LHd7uHYrEeBuJlL1J+njSJEJFkn1RMw+
-+kCsmbnkrY7YIA38nq2Qw6Id+fkq3O+vi7MOTx6IyNtxSN2nu2EYfaWaqyDGOvD1
-UVO1xJcUml5OVm9bznfbmVzSDQnp5M6z83rk/XPdvbBz4UZhwT05GmMmOZ1VwwGs
-CalOKOlb/LPiAhB77fTSG2RgHgOKOHvYlUAopOMGqQKBgQDgIumT8NZUYun39JKN
-wVlIUz9oDBzYDTwLJUhL8/BKW6feXEKFwvzuCiz5FjgYEnKSAU/St+5hk3qkWr6x
-g9V1oDry8FdglA9ZdgWRMIj8GrhwFLT/DcQ5rC0XJ6usWilTxXzlWC+ubanHQuLF
-eGymCd7lDGb2q934vr2dquKbzwKBgQDcCfkFKhCJS1WxuNU9HUCArnD4liSfw+6g
-6EiTDLAgv6aRlSYppvh5ZmYnKJMPZAK4r7krtIesUccsK+wa9HyFeejsQrYaqXHD
-oP6NOv9EX75Iyyxd+A39G6yWagwUVwv8x3cmernzEOtw9meDr0UHMP5vahcKZtNl
-x92ZE1s8nQKBgHFbFtjcb/ljwULHLauFwtriR2oe3iOipeBZLbREHh3tNvwtmvM9
-h1/4Q4CCbUI3ajxPb4h5v5UX2mnu/wyWSUnhDI87YGWW3CB5oR0p983Q0cDVqChq
-VPh6DJ/uT1OukcItWho/vHWyPrBpMnl+iyx6R4F+AUD18SBRj2KDP3JfAoGAdSK5
-9g3Wj8AS9nE20znnRJmYej0zcfmT5wTA3cc7W7OqsIV9s163l6jzaJUo9GCBMmAZ
-azLHpuxB4znejtroDwY/AMbiun7JmSLzX6uwiG2PlqDSFZQfnkZFMi1yEMHmF8L3
-ovxiUQsIyzHhGTEMxi9Gw3jumxLyJpSnWv366+ECgYALIyjfihulif/zR0Dm7yMr
-TyWh3PChrwVox9cCnqVpL0Muo57jJ3NZLrGygZiW3146Wy7+fm0ktxN276GhOfAJ
-EK2xByTRVl8PCn2u0pPIpMTtt1EEEN3vh97+hTJzW4DYalv28J4AWFxkBUOknwdX
-a7zYvL5GT8wIJc23Y95svA==
------END PRIVATE KEY-----
-
-EOF
-    ) >/dev/null
-    echo "${content}" | sudo tee -a "${SSL_KEY}"
+createSslFile() {
+    mkdir -p "${SSL_FOLDER}"
+    rm -f "${SSL_KEY}"
+    rm -f"${SSL_CRT}"
+    echo -e "\n\n\n\n\n\n\n" | openssl req -x509 -nodes -days 365 -newkey rsa:2048 -sha256 \
+        -keyout "${SSL_KEY}" \
+        -out "${SSL_CRT}"
 }
 
 ##
@@ -735,23 +666,6 @@ EOF
 }
 
 ##
-# Init ssl required file
-##
-initSslFile() {
-    if [[ ! -d "${SSL_FOLDER}" ]]; then
-        sudo mkdir -p "${SSL_FOLDER}"
-    fi
-
-    if [[ ! -f "${SSL_CRT}" ]]; then
-        createSslCrt
-    fi
-
-    if [[ ! -f "${SSL_KEY}" ]]; then
-        createSslKey
-    fi
-}
-
-##
 # Init magento equired file
 ##
 initMagentoFile() {
@@ -800,7 +714,7 @@ if [[ "${ishttps}" == '' ]]; then
     ishttps=${FALSE_VALUE}
 fi
 
-initSslFile >/dev/null
+createSslFile >/dev/null
 
 # Check is magento project
 printf "
