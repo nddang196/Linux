@@ -22,7 +22,7 @@ ${password}
 EOF
 do
     printf "\nEnter password for %s: " "${USERNAME}"
-	  IFS= read -rs password
+	IFS= read -rs password
 done
 
 printf "\n\n"
@@ -65,14 +65,15 @@ if [[ ${SETUP_SYSTEM} -eq 1 ]];then
         # Boot setup
         mkinitcpio -P
         bootctl --path=/boot install
-        mv -f "${LIVE_PATH}/includes/boot-loader.conf" /boot/loader/loader.conf
-        mv -f "${LIVE_PATH}/includes/arch.conf" /boot/loader/entries/arch.conf
-        mv -f "${LIVE_PATH}/includes/arch-fallback.conf" /boot/loader/entries/arch-fallback.conf
+        cp "${LIVE_PATH}/includes/boot-loader.conf" /boot/loader/loader.conf
+        cp "${LIVE_PATH}/includes/arch.conf" /boot/loader/entries/arch.conf
+        cp "${LIVE_PATH}/includes/arch-fallback.conf" /boot/loader/entries/arch-fallback.conf
         sed -i "s/%ROOT_LABEL%/${ROOT_LABEL}/g" /boot/loader/entries/arch.conf
         sed -i "s/%ROOT_LABEL%/${ROOT_LABEL}/g" /boot/loader/entries/arch-fallback.conf
+
+        kill ${pid}
     } >> ~/arch-install.log 2>&1
 
-    kill ${pid}
     printf "\n\n"
     echo ">>>>>>>>>>>>>>>>>>>>>>>System Setup - Done!<<<<<<<<<<<<<<<<<<<<<<<<"
 fi
@@ -82,6 +83,7 @@ if [[ ${INSTALL_BASE} -eq 1 ]];then
     spin 'Installing git, vim, curl, zsh, yajl, p7zip, unrar, wget: ' &
     pid=$!
     echo "PID = ${pid}"
+
     {
         echo y | sudo pacman -Syu \
         git \
@@ -92,6 +94,7 @@ if [[ ${INSTALL_BASE} -eq 1 ]];then
         p7zip \
         unrar \
         wget
+        kill ${pid}
     } >> ~/arch-install.log 2>&1
 
     printf "\n\n"
@@ -108,6 +111,7 @@ if [[ ${INSTALL_BASE} -eq 1 ]];then
     spin 'Installing Yaourt : ' &
     pid=$!
     echo "PID = ${pid}"
+
     {
         git clone https://aur.archlinux.org/package-query.git
         git clone https://aur.archlinux.org/yaourt.git
@@ -119,6 +123,7 @@ if [[ ${INSTALL_BASE} -eq 1 ]];then
         rm -rf yaourt
         kill ${pid}
     } >> ~/arch-install.log 2>&1
+
     printf "Install base package done!\n\n"
 
 
@@ -127,16 +132,17 @@ if [[ ${INSTALL_BASE} -eq 1 ]];then
     pid=$!
     echo "PID = ${pid}"
 
-    if [[ ${GIT_USER} != '' ]]; then
-        git config --global user.name "$GIT_USER" >> ~/arch-install.log 2>&1
-    fi
-    if [[ ${GIT_EMAIL} != '' ]]; then
-        git config --global user.email "$GIT_EMAIL" >> ~/arch-install.log 2>&1
-    fi
-    git config --global core.filemode false  >> ~/arch-install.log 2>&1
+    {
+        if [[ ${GIT_USER} != '' ]]; then
+            git config --global user.name "$GIT_USER"
+        fi
+        if [[ ${GIT_EMAIL} != '' ]]; then
+            git config --global user.email "$GIT_EMAIL"
+        fi
+        git config --global core.filemode false
 
-    kill ${pid}
-    git config --list
+        kill ${pid}
+    } >> ~/arch-install.log 2>&1
     printf "Git update config done!\n\n"
 fi
 
@@ -146,28 +152,24 @@ if [[ ${INSTALL_OH_MY_ZSH} -eq 1 ]]; then
     spin '----> Installing' &
     pid=$!
     echo "PID = ${pid}"
-    # Install oh my zsh
-    echo "${password}" | sh -c \
-      "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)" \
-      >> ~/arch-install.log 2>&1
-    kill ${pid}
-    printf "\n\n"
 
-    # install themes and exts
-    spin '----> Installing zsh theme and plugins' &
-    pid=$!
-    echo "PID = ${pid}"
     {
+        # Install oh my zsh
+        echo "${password}" | sh -c \
+            "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+
+        # install themes and extensions
         git clone https://github.com/bhilburn/powerlevel9k.git \
           "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/themes/powerlevel9k"
         git clone https://github.com/zsh-users/zsh-autosuggestions \
           "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions"
         git clone https://github.com/zsh-users/zsh-syntax-highlighting.git \
           "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting"
+
+        cp -f "${LIVE_PATH}/includes/.zshrc" "/home/${USERNAME}/"
+        kill ${pid}
     } >> ~/arch-install.log 2>&1
 
-    cp -f "${LIVE_PATH}/includes/.zshrc" "/home/${USERNAME}"
-    kill ${pid}
     printf "Oh my zsh is installed!\n\n"
 fi
 
@@ -182,8 +184,10 @@ if [[ ${INSTALL_PHP_STORM} -eq 1 ]]; then
     {
         mapfile -t arr < <(curl "https://data.services.jetbrains.com/products/releases\?code\=PS\&latest\=true" | \
         grep -oP "https:\/\/download\.jetbrains\.com\/webide\/PhpStorm-\d*\.\d*(\.\d*)*\.tar\.gz")
+        printf "Array: %s" "${arr[@]}"
 
         url=${arr[0]}
+        echo "URL: ${url}"
         if [[ ${url} != '' ]]; then
             wget -O phpstorm.tar.gz "${url}"
             mkdir -p phpstorm
@@ -191,9 +195,10 @@ if [[ ${INSTALL_PHP_STORM} -eq 1 ]]; then
             sudo mv phpstorm /opt/
             rm phpstorm.tar.gz
         fi
+
+        kill ${pid}
     } >> ~/arch-install.log 2>&1
 
-    kill ${pid}
     printf "PHPStorm is installed!\n\n"
 fi
 
@@ -207,8 +212,10 @@ if [[ ${INSTALL_DATA_GRIP} -eq 1 ]]; then
     {
         mapfile -t arr < <(curl "https://data.services.jetbrains.com/products/releases\?code\=DG\&latest\=true" | \
         grep -oP "https:\/\/download\.jetbrains\.com\/datagrip\/datagrip-\d*\.\d*(\.\d*)*\.tar\.gz")
+        printf "Array: %s" "${arr[@]}"
 
         url=${arr[0]}
+        echo "URL: ${url}"
         if [[ ${url} != '' ]]; then
             wget -O datagrip.tar.gz "${url}"
             mkdir -p datagrip
@@ -216,9 +223,10 @@ if [[ ${INSTALL_DATA_GRIP} -eq 1 ]]; then
             sudo mv datagrip /opt/
             rm datagrip.tar.gz
         fi
+
+        kill ${pid}
     } >> ~/arch-install.log 2>&1
 
-    kill ${pid}
     printf "DataGrip is installed!\n\n"
 fi
 
@@ -232,8 +240,10 @@ if [[ ${INSTALL_INTELIJ_IDEA} -eq 1 ]]; then
     {
         mapfile -t arr < <(curl curl "https://data.services.jetbrains.com/products/releases\?code\=IIU%2CIIC\&latest\=true\&type\=release" | \
         grep -oP "https:\/\/download\.jetbrains\.com\/idea\/ideaIU-\d*\.\d*(\.\d*)*\.tar\.gz")
+        printf "Array: %s" "${arr[@]}"
 
         url=${arr[0]}
+        echo "URL: ${url}"
         if [[ ${url} != '' ]]; then
             wget -O idea.tar.gz "${url}"
             mkdir -p idea
@@ -241,9 +251,10 @@ if [[ ${INSTALL_INTELIJ_IDEA} -eq 1 ]]; then
             sudo mv idea /opt/
             rm idea.tar.gz
         fi
+
+        kill ${pid}
     } >> ~/arch-install.log 2>&1
 
-    kill ${pid}
     printf "Intelij Idea is installed!\n\n"
 fi
 
@@ -283,27 +294,31 @@ if [[ ${INSTALL_KDE} -eq 1 ]]; then
     echo "PID = ${pid}"
 
     {
-        printf "\ny" | sudo pacman -S plasma \
-          sddm \
-          ark \
-          konsole \
-          yakuake \
-          sweeper \
-          dolphin \
-          dolphin-plugins \
-          kdeplasma-addons \
-          networkmanager openconnect networkmanager-openconnect \
-          speedcrunch \
-          kdeconnect \
-          kfind \
-          kwalletmanager \
-          kinfocenter \
-          filelight \
-          gwenview \
-          kipi-plugins \
-          vlc \
-          redshift \
-          ntfs-3g
+        printf "\ny" | sudo pacman -S \
+            plasma-desktop \
+            plasma-nm \
+            plasma-pa \
+            sddm \
+            ark \
+            konsole \
+            yakuake \
+            sweeper \
+            dolphin \
+            dolphin-plugins \
+            kdeplasma-addons \
+            networkmanager \
+            openconnect \
+            networkmanager-openconnect \
+            speedcrunch \
+            kdeconnect \
+            kfind \
+            kwalletmanager \
+            kinfocenter \
+            filelight \
+            gwenview \
+            kipi-plugins \
+            redshift \
+            ntfs-3g
         sudo systemctl enable sddm
         sudo systemctl enable NetworkManager
     } >> ~/arch-install.log 2>&1
