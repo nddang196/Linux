@@ -22,7 +22,7 @@ ${password}
 EOF
 do
     printf "\nEnter password for %s: " "${USERNAME}"
-	IFS= read -rs password
+	  IFS= read -rs password
 done
 
 printf "\n\n"
@@ -124,7 +124,7 @@ if [[ ${INSTALL_BASE} -eq 1 ]];then
         kill ${pid}
     } >> ~/arch-install.log 2>&1
 
-    printf "Install base package done!\n\n"
+    printf "\nInstall base package done!\n\n"
 
 
     echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>GIT CONFIG<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
@@ -143,7 +143,7 @@ if [[ ${INSTALL_BASE} -eq 1 ]];then
 
         kill ${pid}
     } >> ~/arch-install.log 2>&1
-    printf "Git update config done!\n\n"
+    printf "\nGit update config done!\n\n"
 fi
 
 
@@ -154,23 +154,24 @@ if [[ ${INSTALL_OH_MY_ZSH} -eq 1 ]]; then
     echo "PID = ${pid}"
 
     {
+	      rm -rf ~/.oh-my-zsh
         # Install oh my zsh
         echo "${password}" | sh -c \
             "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
 
         # install themes and extensions
-        git clone https://github.com/bhilburn/powerlevel9k.git \
-          "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/themes/powerlevel9k"
+	      git clone https://github.com/romkatv/powerlevel10k.git \
+          "${ZSH_CUSTOM:-/home/${USERNAME}/.oh-my-zsh/custom}/themes/powerlevel10k"
         git clone https://github.com/zsh-users/zsh-autosuggestions \
-          "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions"
+          "${ZSH_CUSTOM:-~/home/${USERNAME}/.oh-my-zsh/custom}/plugins/zsh-autosuggestions"
         git clone https://github.com/zsh-users/zsh-syntax-highlighting.git \
-          "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting"
+          "${ZSH_CUSTOM:-~/home/${USERNAME}/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting"
 
-        cp -f "${LIVE_PATH}/includes/.zshrc" "/home/${USERNAME}/"
+        cp "${LIVE_PATH}/includes/.zshrc" "/home/${USERNAME}/"
         kill ${pid}
     } >> ~/arch-install.log 2>&1
 
-    printf "Oh my zsh is installed!\n\n"
+    printf "\nOh my zsh is installed!\n\n"
 fi
 
 
@@ -182,24 +183,17 @@ if [[ ${INSTALL_PHP_STORM} -eq 1 ]]; then
     echo "PID = ${pid}"
 
     {
-        mapfile -t arr < <(curl "https://data.services.jetbrains.com/products/releases\?code\=PS\&latest\=true" | \
-        grep -oP "https:\/\/download\.jetbrains\.com\/webide\/PhpStorm-\d*\.\d*(\.\d*)*\.tar\.gz")
-        printf "Array: %s" "${arr[@]}"
-
-        url=${arr[0]}
-        echo "URL: ${url}"
-        if [[ ${url} != '' ]]; then
-            wget -O phpstorm.tar.gz "${url}"
-            mkdir -p phpstorm
-            tar -zxvf phpstorm.tar.gz -C phpstorm
-            sudo mv phpstorm /opt/
-            rm phpstorm.tar.gz
-        fi
+        url="https://download.jetbrains.com/product?code=PS&latest&distribution=linux"
+        wget -O phpstorm.tar.gz "${url}"
+        mkdir -p phpstorm
+        tar -zxvf phpstorm.tar.gz -C phpstorm
+        sudo mv phpstorm /opt/
+        rm phpstorm.tar.gz
 
         kill ${pid}
     } >> ~/arch-install.log 2>&1
 
-    printf "PHPStorm is installed!\n\n"
+    printf "\nPHPStorm is installed!\n\n"
 fi
 
 
@@ -210,24 +204,17 @@ if [[ ${INSTALL_DATA_GRIP} -eq 1 ]]; then
     echo "PID = ${pid}"
 
     {
-        mapfile -t arr < <(curl "https://data.services.jetbrains.com/products/releases\?code\=DG\&latest\=true" | \
-        grep -oP "https:\/\/download\.jetbrains\.com\/datagrip\/datagrip-\d*\.\d*(\.\d*)*\.tar\.gz")
-        printf "Array: %s" "${arr[@]}"
-
-        url=${arr[0]}
-        echo "URL: ${url}"
-        if [[ ${url} != '' ]]; then
-            wget -O datagrip.tar.gz "${url}"
-            mkdir -p datagrip
-            tar -zxvf datagrip.tar.gz -C datagrip
-            sudo mv datagrip /opt/
-            rm datagrip.tar.gz
-        fi
+        url="https://download.jetbrains.com/product?code=DG&latest&distribution=linux"
+        wget -O datagrip.tar.gz "${url}"
+        mkdir -p datagrip
+        tar -zxvf datagrip.tar.gz -C datagrip
+        sudo mv datagrip /opt/
+        rm datagrip.tar.gz
 
         kill ${pid}
     } >> ~/arch-install.log 2>&1
 
-    printf "DataGrip is installed!\n\n"
+    printf "\nDataGrip is installed!\n\n"
 fi
 
 
@@ -238,24 +225,17 @@ if [[ ${INSTALL_INTELIJ_IDEA} -eq 1 ]]; then
     echo "PID = ${pid}"
 
     {
-        mapfile -t arr < <(curl curl "https://data.services.jetbrains.com/products/releases\?code\=IIU%2CIIC\&latest\=true\&type\=release" | \
-        grep -oP "https:\/\/download\.jetbrains\.com\/idea\/ideaIU-\d*\.\d*(\.\d*)*\.tar\.gz")
-        printf "Array: %s" "${arr[@]}"
-
-        url=${arr[0]}
-        echo "URL: ${url}"
-        if [[ ${url} != '' ]]; then
-            wget -O idea.tar.gz "${url}"
-            mkdir -p idea
-            tar -zxvf idea.tar.gz -C idea
-            sudo mv idea /opt/
-            rm idea.tar.gz
-        fi
+        url="https://download.jetbrains.com/product?code=IIU&latest&distribution=linux"
+        wget -O idea.tar.gz "${url}"
+        mkdir -p idea
+        tar -zxvf idea.tar.gz -C idea
+        sudo mv idea /opt/
+        rm idea.tar.gz
 
         kill ${pid}
     } >> ~/arch-install.log 2>&1
 
-    printf "Intelij Idea is installed!\n\n"
+    printf "\nIntelij Idea is installed!\n\n"
 fi
 
 if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
@@ -284,7 +264,7 @@ if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
     } >> ~/arch-install.log 2>&1
 
     kill ${pid}
-    echo "Docker is installed!"
+    printf "\nDocker is installed!\n\n"
 fi
 
 if [[ ${INSTALL_KDE} -eq 1 ]]; then
@@ -295,9 +275,7 @@ if [[ ${INSTALL_KDE} -eq 1 ]]; then
 
     {
         printf "\ny" | sudo pacman -S \
-            plasma-desktop \
-            plasma-nm \
-            plasma-pa \
+            plasma \
             sddm \
             ark \
             konsole \
@@ -324,8 +302,7 @@ if [[ ${INSTALL_KDE} -eq 1 ]]; then
     } >> ~/arch-install.log 2>&1
 
     kill ${pid}
-    echo "KDE is installed!"
+    printf "\nKDE is installed!\n\n"
 fi
 
-printf "\n\n"
 echo "Arch Linux install package done! <<<<<<<<<<<<<<<<<< VooThanhArch"
